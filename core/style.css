@@ -479,3 +479,9 @@ textarea {
     color: #888;
     margin-top: 8px;
 }
+
+/* Hides elements by default. 
+   We will remove this class via JS if the user is an Admin. */
+.admin-only {
+    display: none !important;
+}
