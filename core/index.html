@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inLoop - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body style="display:flex; justify-content:center; align-items:center; height:100vh; padding:20px;">
+
+    <div style="width:100%; max-width:400px; text-align:center;">
+        <h1 style="font-size: 3rem; margin-bottom: 10px;">inLoop</h1>
+        <p style="color:#888; margin-bottom: 30px;">Connect. Participate. Belong.</p>
+
+        <div style="background:#222; padding:5px; border-radius:8px; display:flex; margin-bottom:20px;">
+            <button id="showLoginBtn" class="btn" style="flex:1; background:var(--primary); color:white;"
+                onclick="toggleAuthMode('login')">Login</button>
+            <button id="showSignupBtn" class="btn" style="flex:1; background:transparent; color:#888;"
+                onclick="toggleAuthMode('signup')">Sign Up</button>
+        </div>
+
+        <div id="loginFormContainer">
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPass" placeholder="Password">
+            <button id="emailLoginBtn" class="btn btn-primary"
+                style="width:100%; margin-top:15px; padding:12px;">Login</button>
+            <p style="margin:15px 0; color:#666;">or</p>
+            <button id="googleLoginBtn" class="btn" style="width:100%; background:white; color:black; padding:12px;">
+                Continue with Google
+            </button>
+        </div>
+
+        <div id="signupFormContainer" class="hidden">
+            <input type="email" id="signupEmail" placeholder="Student Email">
+            <input type="password" id="signupPass" placeholder="Create Password">
+            <button id="emailSignupBtn" class="btn btn-primary" style="width:100%; margin-top:15px; padding:12px;">Sign
+                Up</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inLoop - Clubs</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <nav class="top-nav">
+        <div class="left-nav" id="menu-btn"><i class="fas fa-bars"></i></div>
+        <div class="brand">Clubs</div>
+        <div class="right-nav" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <h3>My Clubs</h3>
+    </div>
+
+    <main class="content-wrapper">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="position:relative; flex:1; margin-right:10px;">
+                <input type="text" placeholder="Search..." style="margin:0; padding-left:35px;">
+                <i class="fas fa-search" style="position:absolute; left:10px; top:12px; color:#666;"></i>
+            </div>
+            <button class="btn btn-primary" onclick="openCreateClubModal()"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="event-modal hidden" id="editClubModal">
+            <div class="event-modal-card">
+                <div class="event-modal-header">
+                    <h3>Edit Club</h3>
+                    <button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="editClubForm">
+                    <input type="hidden" id="editClubId">
+
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="editClubName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="editClubCategory">
+                            <option value="tech">Tech</option>
+                            <option value="cultural">Cultural</option>
+                            <option value="sports">Sports</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Color</label>
+                        <input type="color" id="editClubColor" style="height:40px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="editClubDesc" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Update Club</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchClubTab('all')">All</div>
+            <div class="tab" onclick="switchClubTab('tech')">Tech</div>
+            <div class="tab" onclick="switchClubTab('cultural')">Cultural</div>
+            <div class="tab" onclick="switchClubTab('sports')">Sports</div>
+        </div>
+
+        <div class="clubs-grid" id="clubs-grid">
+            <p style="grid-column: 1/-1; text-align:center;">Loading clubs...</p>
+        </div>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item"><i class="fas fa-home"></i> <span>Home</span></a>
+        <a href="calendar.html" class="nav-item"><i class="fas fa-calendar-alt"></i> <span>Calendar</span></a>
+        <a href="clubs.html" class="nav-item active"><i class="fas fa-users"></i> <span>Clubs</span></a>
+    </nav>
+
+    <div class="event-modal hidden" id="createClubModal">
+        <div class="event-modal-card">
+            <div class="event-modal-header">
+                <h3>New Club</h3><button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="createClubForm">
+                <div class="form-group"><label>Name</label><input type="text" id="clubName" required></div>
+                <div class="form-group"><label>Category</label>
+                    <select id="clubCategory">
+                        <option value="tech">Tech</option>
+                        <option value="cultural">Cultural</option>
+                        <option value="sports">Sports</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Color</label><input type="color" id="clubColor" value="#3B82F6"
+                        style="height:40px;"></div>
+                <div class="form-group"><label>Description</label><textarea id="clubDesc" rows="3"></textarea></div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Create</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>

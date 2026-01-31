@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Club Details</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <nav class="top-nav">
+        <div class="left-nav" onclick="history.back()" style="cursor:pointer">
+            <i class="fas fa-arrow-left"></i>
+        </div>
+        <div class="brand" id="headerClubName">Loading...</div>
+        <div class="right-nav"><i class="fas fa-ellipsis-v"></i></div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <h3>My Clubs</h3>
+    </div>
+
+    <main class="content-wrapper" style="padding-top:0;">
+
+        <div id="clubHeader" style="background: linear-gradient(to bottom, #333, #121212); padding: 40px 20px 20px; text-align: center; border-bottom: 1px solid #333;">
+            <div id="clubIcon" style="font-size: 50px; margin-bottom: 10px;">🏛️</div>
+            <h1 id="detailClubName" style="margin: 0;">Club Name</h1>
+            <span id="detailCategory" class="badge" style="background:#555; margin-top:10px; display:inline-block;">Category</span>
+            <p id="detailDesc" style="color: #aaa; margin-top: 10px; font-size: 0.9rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Description loading...
+            </p>
+            <button class="btn btn-primary" style="margin-top: 15px; padding: 6px 20px;">Join Club</button>
+        </div>
+
+        <div class="tabs" style="justify-content: center; margin-top: 20px; border-bottom: 1px solid #333;">
+            <div class="tab active" onclick="showSection('feed')">Feed</div>
+            <div class="tab" onclick="showSection('events')">Events</div>
+            <div class="tab" onclick="showSection('resources')">Resources</div>
+        </div>
+
+        <div id="section-feed" class="section-content" style="max-width: 600px; margin: 20px auto;">
+            <div style="background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <textarea placeholder="Post an announcement..." style="width: 100%; background: transparent; border: none; color: white; resize: none;"></textarea>
+                <div style="text-align: right; margin-top: 5px;">
+                    <button class="btn btn-primary" style="font-size: 0.8rem;">Post</button>
+                </div>
+            </div>
+            <div style="background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <div style="width: 30px; height: 30px; background: #555; border-radius: 50%;"></div>
+                    <span style="font-weight: bold; font-size: 0.9rem;">Admin</span>
+                    <span style="color: #666; font-size: 0.8rem;">2h ago</span>
+                </div>
+                <p style="color: #ddd;">Welcome to the new club page! Check the events tab for upcoming meetings.</p>
+            </div>
+        </div>
+
+        <div id="section-events" class="section-content hidden" style="max-width: 800px; margin: 20px auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; background:#1e1e1e; padding:10px; border-radius:8px;">
+                <h3 id="monthLabel" style="margin:0;">Loading...</h3>
+                <div>
+                    <button class="btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <button class="btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <div class="calendar-grid-header">
+                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+            </div>
+            <div class="calendar-days" id="calendarDays"></div>
+
+            <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="openAddEventModal()">
+                <i class="fas fa-plus"></i> Add Event to Calendar
+            </button>
+        </div>
+
+        <div id="section-resources" class="section-content hidden" style="max-width: 600px; margin: 20px auto;">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>Study Material & Links</h3>
+                <button class="btn" style="background:#333; font-size:0.8rem;" onclick="openAddResourceModal()">
+                    <i class="fas fa-plus"></i> Add
+                </button>
+            </div>
+
+            <div id="resourcesList" style="display:flex; flex-direction:column; gap:10px;">
+                <p style="color:#666; text-align:center;">Loading resources...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="event-modal hidden" id="eventModal">
+        <div class="event-modal-card">
+            <div class="event-modal-header">
+                <h3 id="modalDateTitle">Details</h3>
+                <button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="modalEventList"></div>
+        </div>
+    </div>
+
+    <div class="event-modal hidden" id="addEventModal">
+        <div class="event-modal-card">
+            <div class="event-modal-header">
+                <h3>Add Event</h3>
+                <button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="newEventForm">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="evtTitle" required>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Date</label>
+                        <input type="date" id="evtDate" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Time</label>
+                        <input type="time" id="evtTime" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="evtCategory">
+                        <option value="tech">Tech</option>
+                        <option value="cultural">Cultural</option>
+                        <option value="sports">Sports</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="event-modal hidden" id="addResourceModal">
+        <div class="event-modal-card">
+            <div class="event-modal-header">
+                <h3>Add Resource</h3>
+                <button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="newResourceForm">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="resTitle" placeholder="e.g. Club Manifesto" required>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="resType">
+                        <option value="pdf">PDF Document</option>
+                        <option value="video">Video Recording</option>
+                        <option value="link">Website Link</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL (Link)</label>
+                    <input type="url" id="resUrl" placeholder="https://..." required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Add Resource</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showSection(id) {
+            document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('section-' + id).classList.remove('hidden');
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>

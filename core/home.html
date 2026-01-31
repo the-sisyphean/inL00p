@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>inLoop - Home</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+
+    <nav class="top-nav">
+        <div class="left-nav" id="menu-btn"><i class="fas fa-bars"></i></div>
+        <div class="brand">Home</div>
+        <div class="right-nav" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></div>
+    </nav>
+
+    <div class="sidebar" id="sidebar">
+        <h3>Menu</h3>
+        <p style="color:#888; font-size:0.9rem; margin-top:10px;">User Account</p>
+        <p id="user-email-display" style="margin-bottom:20px; font-weight:bold;">Loading...</p>
+        <hr style="border-color:#333">
+    </div>
+
+    <main class="content-wrapper">
+        <div style="margin-bottom: 25px;">
+            <div class="content-section">
+                <h3><i class="fas fa-calendar-check" style="color:var(--primary)"></i> My Upcoming Schedule</h3>
+                <div id="my-schedule-list" style="display:grid; gap:10px; margin-top:15px;">
+                    <p style="color:#666">You haven't marked any events as interested yet.</p>
+                </div>
+            </div>
+            <h2>Happening Today</h2>
+            <div
+                style="margin-top:15px; padding:15px; background:#1e1e1e; border-left: 4px solid var(--primary); border-radius:8px;">
+                <h4>Hackathon Kickoff</h4>
+                <p style="color:#aaa; font-size:0.9rem;">10:00 AM • Main Auditorium</p>
+            </div>
+            <div
+                style="margin-top:10px; padding:15px; background:#1e1e1e; border-left: 4px solid #e91e63; border-radius:8px;">
+                <h4>Dance Rehearsal</h4>
+                <p style="color:#aaa; font-size:0.9rem;">5:00 PM • Student Center</p>
+            </div>
+        </div>
+
+        <div>
+            <h2>This Week</h2>
+            <p style="color:#666; margin-top:10px;">No other major events scheduled.</p>
+        </div>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="home.html" class="nav-item active"><i class="fas fa-home"></i> <span>Home</span></a>
+        <a href="calendar.html" class="nav-item"><i class="fas fa-calendar-alt"></i> <span>Calendar</span></a>
+        <a href="clubs.html" class="nav-item"><i class="fas fa-users"></i> <span>Clubs</span></a>
+    </nav>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>
