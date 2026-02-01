@@ -13,7 +13,7 @@
 
     <nav class="top-nav">
         <div class="left-nav" id="menu-btn"><i class="fas fa-bars"></i></div>
-        <div class="brand">Home</div>
+        <div class="brand">♾️ inLoop</div>
         <div class="right-nav" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></div>
     </nav>
 
@@ -23,9 +23,10 @@
         <p id="user-email-display" style="margin-bottom:20px; font-weight:bold;">Loading...</p>
         <hr style="border-color:#333">
 
-        <div id="adminToolsSection" class="admin-only"
-            style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
+        <div id="adminToolsSection" class="admin-only" style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
             <h4 style="color:#aaa; font-size:0.9rem; margin-bottom:10px;">ADMIN TOOLS</h4>
+            
+            <p id="adminClubName" style="color: #3B82F6; font-size: 0.9rem; margin-bottom: 10px;"></p>
 
             <button onclick="openAddAdminModal()" class="sidebar-link"
                 style="width:100%; text-align:left; background:none; border:none; color:white; cursor:pointer;">
@@ -42,22 +43,12 @@
                     <p style="color:#666">You haven't marked any events as interested yet.</p>
                 </div>
             </div>
-            <h2>Happening Today</h2>
-            <div
-                style="margin-top:15px; padding:15px; background:#1e1e1e; border-left: 4px solid var(--primary); border-radius:8px;">
-                <h4>Hackathon Kickoff</h4>
-                <p style="color:#aaa; font-size:0.9rem;">10:00 AM • Main Auditorium</p>
+            <div class="dashboard-card">
+                <h2>Happening Today</h2>
+                <div id="happening-today-list">
+                    <p style="color:#666; font-style:italic;">Loading today's events...</p>
+                </div>
             </div>
-            <div
-                style="margin-top:10px; padding:15px; background:#1e1e1e; border-left: 4px solid #e91e63; border-radius:8px;">
-                <h4>Dance Rehearsal</h4>
-                <p style="color:#aaa; font-size:0.9rem;">5:00 PM • Student Center</p>
-            </div>
-        </div>
-
-        <div>
-            <h2>This Week</h2>
-            <p style="color:#666; margin-top:10px;">No other major events scheduled.</p>
         </div>
     </main>
 
@@ -66,19 +57,26 @@
         <a href="calendar.html" class="nav-item"><i class="fas fa-calendar-alt"></i> <span>Calendar</span></a>
         <a href="clubs.html" class="nav-item"><i class="fas fa-users"></i> <span>Clubs</span></a>
     </nav>
+
     <div id="addAdminModal" class="event-modal hidden">
-        <div class="modal-content">
-            <h3>Add New Admin</h3>
+        <div class="event-modal-card">
+            <div class="event-modal-header">
+                <h3>Add New Admin</h3>
+                <button onclick="closeModals()" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 15px;">
+                Enter the email of the user you want to make an admin of your club. They must have logged in at least once.
+            </p>
             <form id="addAdminForm">
-                <input type="email" id="newAdminEmail" placeholder="Enter user email..." required>
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                    <button type="button" onclick="closeModals()" class="btn" style="background:#333;">Cancel</button>
-                    <button type="submit" class="btn" style="background:var(--primary);">Add Admin</button>
+                <div class="form-group">
+                    <label>User Email</label>
+                    <input type="email" id="newAdminEmail" placeholder="user@example.com" required>
                 </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Add Admin</button>
             </form>
         </div>
     </div>
+
     <script type="module" src="app.js"></script>
 </body>
-
 </html>

@@ -385,7 +385,7 @@ textarea {
 #my-schedule-list {
     display: grid;
     /* This creates columns automatically. Min 160px wide, Max 1fr */
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 15px;
     margin-top: 15px;
 }
@@ -395,13 +395,15 @@ textarea {
     padding: 15px;
     border-radius: 12px;
     border: 1px solid #333;
-    border-left: 4px solid var(--primary); /* Keeps your accent color */
-    
+    border-left: 4px solid var(--primary);
+    /* Keeps your accent color */
+
     /* Make it a square-ish shape */
-    aspect-ratio: 1 / 1; 
+    aspect-ratio: 1 / 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Pushes 'Going' badge to bottom */
+    justify-content: space-between;
+    /* Pushes 'Going' badge to bottom */
     transition: transform 0.2s;
 }
 
@@ -432,10 +434,11 @@ textarea {
 .events-grid {
     display: grid;
     /* Auto-fit columns: Min 160px wide, Max fills space */
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 15px;
     margin-top: 15px;
-    margin-bottom: 30px; /* Space between sections */
+    margin-bottom: 30px;
+    /* Space between sections */
 }
 
 /* The Square Card Styling */
@@ -444,22 +447,23 @@ textarea {
     padding: 15px;
     border-radius: 12px;
     border: 1px solid #333;
-    border-left: 4px solid var(--primary); 
-    
+    border-left: 4px solid var(--primary);
+
     /* Force Square Shape */
-    aspect-ratio: 1 / 1; 
-    
+    aspect-ratio: 1 / 1;
+
     display: flex;
     flex-direction: column;
-    justify-content: space-between; 
+    justify-content: space-between;
     transition: transform 0.2s, background 0.2s;
-    cursor: pointer; /* Indicates clickable */
+    cursor: pointer;
+    /* Indicates clickable */
 }
 
 .schedule-card:hover {
     transform: translateY(-3px);
     background: #252525;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .schedule-card h4 {
@@ -480,8 +484,164 @@ textarea {
     margin-top: 8px;
 }
 
-/* Hides elements by default. 
-   We will remove this class via JS if the user is an Admin. */
+/* SECURITY / UI HIDING */
+/* Hide admin elements by default. JS will show them if authorized. */
 .admin-only {
     display: none !important;
 }
+
+/* When JS determines user is admin, we switch this class */
+.is-admin-visible {
+    display: inline-flex !important; /* or block/flex depending on element */
+}
+/* --- 1. GLOBAL BLACK BACKGROUND --- */
+body {
+    background-color: #000000 !important;
+    /* Pure Black */
+    color: #ffffff;
+}
+
+/* --- 2. HIDE NAV/HEADER BACKGROUNDS --- */
+/* This makes the top header blend into the black body */
+header,
+nav,
+.top-bar {
+    background-color: #000000 !important;
+    border-bottom: 1px solid #1a1a1a;
+    /* Very subtle separation */
+}
+
+/* Bottom Navigation Bar (if you use it) */
+.bottom-nav {
+    background-color: #000000 !important;
+    border-top: 1px solid #1a1a1a;
+}
+
+/* --- 3. INTERACTIVE ELEMENTS (GREY) --- */
+/* Cards, Inputs, and Modals get the grey "surface" color */
+.card,
+.club-card,
+.schedule-card,
+.event-item,
+#calendarDays .day,
+.modal-content {
+    background-color: #1e1e1e !important;
+    /* Dark Grey */
+    border: 1px solid #333;
+    /* Slight border for definition */
+}
+
+/* Inputs should also use the grey surface */
+input,
+select,
+textarea {
+    background-color: #1e1e1e !important;
+    color: white !important;
+    border: 1px solid #444 !important;
+}
+
+/* --- 4. SIDEBAR --- */
+#sidebar {
+    background-color: #111111 !important;
+    /* Slightly lighter than pure black */
+}
+
+/* --- FIX: FORCE FULL BLACK BACKGROUND --- */
+html,
+body {
+    height: 100%;
+    /* Force them to fill the window height */
+    margin: 0;
+    padding: 0;
+    background-color: #000000 !important;
+    /* Pure Black everywhere */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+}
+
+/* Ensure your main container doesn't have a grey background */
+.container,
+.main-content,
+#app {
+    background-color: transparent !important;
+}
+
+/* --- YOUR EXISTING CARD STYLES (Keep these Grey) --- */
+.card,
+.club-card,
+.schedule-card,
+.event-item,
+#calendarDays .day {
+    background-color: #1e1e1e !important;
+    /* Grey for cards only */
+}
+
+/* Small Utility Button */
+.btn-sm {
+    background-color: transparent;
+    border: 1px solid #444;
+    color: #aaa;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.btn-sm:hover {
+    border-color: #fff;
+    color: #fff;
+    background-color: #1e1e1e;
+}
+
+/* Layout for the row containing Create Button and Tabs */
+.club-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between button and tabs */
+    flex-wrap: wrap; /* Allow wrapping on very small screens */
+}
+
+/* Ensure the tabs take up remaining space or align nicely */
+.club-controls .tabs {
+    flex: 1;
+    margin-bottom: 0;
+    justify-content: flex-end; /* Push tabs to the right */
+}
+
+/* Mobile Adjustment: Stack them on very small screens */
+@media (max-width: 480px) {
+    .club-controls {
+        flex-direction: column-reverse; /* Tabs on top, button below if stacked */
+        align-items: stretch;
+    }
+    .club-controls .tabs {
+        justify-content: space-between;
+    }
+}
+/* Style for the list of events inside the modal */
+.event-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2a2a2a;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid #555; /* Default border color */
+}
+
+.event-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.event-actions i {
+    cursor: pointer;
+    padding: 5px;
+    color: #888;
+    transition: color 0.2s;
+}
+
+.event-actions i.fa-pencil-alt:hover { color: #3B82F6; } /* Blue for edit */
+.event-actions i.fa-trash:hover { color: #EF4444; } /* Red for delete */

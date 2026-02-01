@@ -12,19 +12,16 @@
 <body>
 
     <nav class="top-nav">
-        <div class="left-nav" id="menu-btn"><i class="fas fa-bars"></i></div>
-        <div class="brand">Calendar</div>
+        <div class="brand">♾️ inLoop</div>
         <div class="right-nav" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></div>
     </nav>
 
-    <div class="sidebar" id="sidebar">
-        <h3>Menu</h3>
-    </div>
 
     <main class="content-wrapper">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h2 id="monthLabel">Loading...</h2>
             <div>
+                <button id="todayBtn" class="btn-sm">Today</button>
                 <button class="btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
                 <button class="btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
             </div>
@@ -41,9 +38,6 @@
         </div>
         <div class="calendar-days" id="calendarDays"></div>
 
-        <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="openAddEventModal()">
-            <i class="fas fa-plus"></i> Add Event
-        </button>
     </main>
 
     <nav class="bottom-nav">

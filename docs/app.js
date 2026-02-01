@@ -1,517 +1,537 @@
-import { auth, db, provider } from './firebase.js'; 
-import { 
-    signInWithPopup, signOut, onAuthStateChanged, 
-    createUserWithEmailAndPassword, signInWithEmailAndPassword 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+// app.js
 
+// 1. Import Functions (Logic) from the Internet (CDN)
 import { 
-    collection, addDoc, getDocs, onSnapshot, doc, getDoc, updateDoc, setDoc,
-    query, where, deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, setDoc, arrayUnion 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+import { 
+    onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+import { 
+    ref, uploadString, getDownloadURL 
+} from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
+// 2. Import the Database Connection from YOUR file
+// (Make sure the path "./firebase.js" is correct)
+import { db, auth } from "./firebase.js"; 
 
 // --- GLOBAL STATE ---
-let currentDate = new Date();
-let calendarEvents = [];
-let currentPageClubId = null; 
-let currentPageClubName = null; 
-let currentUser = null; 
-let isAdmin = false; 
+let currentUser = null;
+let myAdminClubId = null; 
+let allClubsData = [];
+let eventsData = [];
+let currMonth = new Date().getMonth();
+let currYear = new Date().getFullYear();
+let currentCategoryFilter = 'all';
 
-// --- 1. AUTH CHECKER & REDIRECT LOGIC ---
+// --- 3. AUTH STATE LISTENER (The Router) ---
 onAuthStateChanged(auth, async (user) => {
-    const path = window.location.pathname;
-    const isLoginPage = path.includes('index.html') || path === '/' || path.endsWith('/');
-
+    const isLoginPage = document.getElementById('loginFormContainer');
+    
     if (user) {
-        currentUser = user; 
+        currentUser = user;
+        console.log("User Logged In:", user.email);
         
-        // 1. Check Admin Status FIRST
-        await checkAdminStatus(user.email);
+        // CRITICAL: Ensure user is saved in DB for Admin lookup
+        await ensureUserInDB(user);
 
-        // 2. Then decide where to go
         if (isLoginPage) {
-            window.location.href = "home.html";
+            window.location.href = "home.html"; // Redirect to app
         } else {
-            initApp(user);
+            // We are inside the app, load data
+            await checkAdminStatus(user.uid);
+            setupUI();
         }
     } else {
+        console.log("No user logged in");
         if (!isLoginPage) {
-            window.location.href = "index.html";
-        }
-    }
-});
-
-// --- ADMIN CHECK FUNCTION ---
-async function checkAdminStatus(email) {
-    if(!email) return;
-    try {
-        const docRef = doc(db, "admins", email);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            isAdmin = true;
-            console.log("Admin Access: GRANTED");
+            window.location.href = "index.html"; // Redirect to login
         } else {
-            isAdmin = false;
-            console.log("Admin Access: DENIED");
+            setupLoginListeners(); // Setup login page buttons
         }
-    } catch(e) {
-        console.error("Auth Check Error:", e);
-        isAdmin = false;
     }
-}
+});
 
-// --- 2. PAGE INITIALIZATION ---
-function initApp(user) {
-    const urlParams = new URLSearchParams(window.location.search);
-    currentPageClubId = urlParams.get('id');
+// --- 4. LOGIN / SIGNUP LOGIC (Index.html) ---
 
-    setupUI(user);
-    
-    // IMPORTANT: Reveal admin buttons only if authorized
-    applyAdminPermissions(); 
+function setupLoginListeners() {
+    // Helper to toggle UI
+    window.toggleAuthMode = (mode) => {
+        const loginBtn = document.getElementById('showLoginBtn');
+        const signupBtn = document.getElementById('showSignupBtn');
+        const loginForm = document.getElementById('loginFormContainer');
+        const signupForm = document.getElementById('signupFormContainer');
 
-    // A. HOME PAGE
-    if (document.getElementById('my-schedule-list')) loadMySchedule(user.uid);
-    if (document.getElementById('clubs-grid')) {
-        loadClubs();
-        setupClubForms();
-    }
-
-    // B. CALENDAR
-    if (document.getElementById('calendarDays')) {
-        startCalendarListener(); 
-        const evtForm = document.getElementById("newEventForm");
-        if(evtForm) evtForm.addEventListener("submit", handleAddEvent);
-    }
-
-    // C. CLUB DETAILS
-    if (document.getElementById('detailClubName')) {
-        if(currentPageClubId) {
-            loadClubDetails(currentPageClubId);
-            if(document.getElementById('resourcesList')) loadResources(currentPageClubId);
+        if(mode === 'login') {
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            loginBtn.className = "btn btn-active";
+            signupBtn.className = "btn btn-inactive";
+        } else {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            loginBtn.className = "btn btn-inactive";
+            signupBtn.className = "btn btn-active";
         }
-        const resForm = document.getElementById("newResourceForm");
-        if(resForm) resForm.addEventListener("submit", (e) => handleAddResource(e, currentPageClubId));
-    }
-}
+    };
 
-// --- UPDATED PERMISSIONS LOGIC ---
-function applyAdminPermissions() {
-    // 1. Find all elements with class 'admin-only' (hidden by CSS default)
-    const protectedElements = document.querySelectorAll('.admin-only');
-
-    if (isAdmin) {
-        // If user IS admin, show them
-        protectedElements.forEach(el => {
-            el.style.display = 'block'; // or 'flex' depending on your layout
-            // To be safe, we can remove the class entirely
-            el.classList.remove('admin-only'); 
+    // Handle Login
+    const loginForm = document.getElementById('loginForm');
+    if(loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPass').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                // Listener handles redirect
+            } catch (error) { alert("Login Failed: " + error.message); }
         });
-    } else {
-        // If user is NOT admin, ensure they stay hidden
-        protectedElements.forEach(el => el.style.display = 'none');
+    }
+
+    // Handle Signup
+    const signupForm = document.getElementById('signupForm');
+    if(signupForm) {
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const pass = document.getElementById('signupPass').value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                // Listener handles DB sync and redirect
+            } catch (error) { alert("Signup Failed: " + error.message); }
+        });
+    }
+
+    // Handle Google
+    const googleBtn = document.getElementById('googleLoginBtn');
+    if(googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) { console.error(error); }
+        });
     }
 }
 
-function setupUI(user) {
+// --- 5. CORE DATABASE FUNCTIONS ---
+
+// Sync User to 'users' collection (Necessary for "Add Admin" feature)
+async function ensureUserInDB(user) {
+    try {
+        const userRef = doc(db, "users", user.uid);
+        // setDoc with merge:true updates if exists, creates if not
+        await setDoc(userRef, { 
+            email: user.email, 
+            uid: user.uid 
+        }, { merge: true });
+    } catch(e) { console.error("Error syncing user to DB:", e); }
+}
+
+// Check if User is an Admin of any club
+async function checkAdminStatus(uid) {
+    const q = query(collection(db, "clubs"), where("admins", "array-contains", uid));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+        const clubDoc = snap.docs[0];
+        myAdminClubId = clubDoc.id;
+        
+        // Show Admin Section in Sidebar
+        const adminSection = document.getElementById('adminToolsSection');
+        if(adminSection) {
+            adminSection.classList.remove('admin-only');
+            adminSection.classList.add('is-admin-visible');
+            document.getElementById('adminClubName').innerText = `Managing: ${clubDoc.data().name}`;
+        }
+    } else {
+        myAdminClubId = null;
+    }
+}
+
+// --- 6. MAIN APP UI SETUP ---
+
+function setupUI() {
+    const path = window.location.pathname;
+
+    const emailDisp = document.getElementById('user-email-display');
+    if(emailDisp) emailDisp.textContent = currentUser.email;
+
     const logoutBtn = document.getElementById('logoutBtn');
-    if(logoutBtn) logoutBtn.addEventListener('click', () => signOut(auth));
+    if(logoutBtn) logoutBtn.onclick = () => signOut(auth);
 
-    const emailDisplay = document.getElementById('user-email-display');
-    if(emailDisplay) emailDisplay.textContent = user.email + (isAdmin ? " (Admin)" : "");
+    if (path.includes('home.html')) loadHomeData();
+    else if (path.includes('clubs.html')) loadClubs();
+    else if (path.includes('club_details.html')) loadClubDetails();
+}
 
-    const menuBtn = document.getElementById('menu-btn');
-    const sidebar = document.getElementById('sidebar');
+// --- 7. HOME PAGE LOGIC (Feed + Admin Tools) ---
+
+async function loadHomeData() {
+    // Load Events Today
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(collection(db, "events"), where("date", "==", today));
+    const snap = await getDocs(q);
+    const list = document.getElementById('happening-today-list');
     
-    const adminForm = document.getElementById("addAdminForm");
-    if(adminForm) adminForm.addEventListener("submit", handleAddNewAdmin);
-
-    // Sidebar Logic
-    if(menuBtn && sidebar) {
-        // Force z-index to ensure it sits on top
-        menuBtn.style.zIndex = "2000"; 
-        
-        menuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            sidebar.classList.toggle('open');
+    if(list) {
+        list.innerHTML = '';
+        if(snap.empty) list.innerHTML = '<p style="color:#666">No events today.</p>';
+        snap.forEach(d => {
+            const evt = d.data();
+            list.innerHTML += `<div style="background:#2a2a2a; padding:10px; border-radius:5px; margin-bottom:5px; border-left:3px solid var(--primary)">
+                <strong>${evt.title}</strong> <span style="float:right; color:#888">${evt.time}</span>
+            </div>`;
         });
-        
-        document.addEventListener('click', (e) => {
-            if (!sidebar.contains(e.target) && !menuBtn.contains(e.target) && sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-            }
+    }
+
+    // Add Admin Form Listener
+    const addAdminForm = document.getElementById('addAdminForm');
+    if(addAdminForm) {
+        addAdminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('newAdminEmail').value.trim();
+            
+            if(!myAdminClubId) return alert("You don't have a club to manage.");
+
+            try {
+                // Find User UID by Email
+                const userQuery = query(collection(db, "users"), where("email", "==", email));
+                const userSnap = await getDocs(userQuery);
+
+                if(userSnap.empty) return alert("User not found. They must log in to the app once.");
+
+                const newAdminUid = userSnap.docs[0].data().uid;
+
+                // Update Club
+                await updateDoc(doc(db, "clubs", myAdminClubId), {
+                    admins: arrayUnion(newAdminUid)
+                });
+
+                alert(`${email} added as admin!`);
+                closeModals();
+            } catch(err) { console.error(err); alert("Failed to add admin."); }
         });
     }
 }
 
-function setupClubForms() {
-    const clubForm = document.getElementById("createClubForm");
-    if(clubForm) clubForm.addEventListener("submit", handleCreateClub);
-    const editForm = document.getElementById("editClubForm");
-    if(editForm) editForm.addEventListener("submit", handleUpdateClub);
+// --- 8. CLUBS PAGE LOGIC ---
+
+async function loadClubs() {
+    const grid = document.getElementById('clubs-grid');
+    if(!grid) return;
+
+    // Search Listener
+    document.getElementById('searchInput').addEventListener('keyup', filterAndRenderClubs);
+
+    // Fetch Data
+    const snap = await getDocs(collection(db, "clubs"));
+    allClubsData = [];
+    let isUserAdminOfAny = false;
+
+    snap.forEach(doc => {
+        const data = doc.data();
+        const isMyClub = data.admins && data.admins.includes(currentUser.uid);
+        if(isMyClub) isUserAdminOfAny = true;
+        allClubsData.push({ id: doc.id, ...data, isMyClub });
+    });
+
+    // Toggle Create Button
+    const createBtn = document.getElementById('createClubBtn');
+    if(createBtn) {
+        // Hide if user is already an admin (Max 1 club rule)
+        if(isUserAdminOfAny) {
+            createBtn.classList.add('admin-only');
+            createBtn.classList.remove('is-admin-visible');
+        } else {
+            createBtn.classList.remove('admin-only');
+            createBtn.classList.add('is-admin-visible');
+        }
+    }
+
+    filterAndRenderClubs();
 }
 
-// --- 3. AUTH MODES ---
-window.toggleAuthMode = (mode) => {
-    const login = document.getElementById('loginFormContainer');
-    const signup = document.getElementById('signupFormContainer');
-    const lBtn = document.getElementById('showLoginBtn');
-    const sBtn = document.getElementById('showSignupBtn');
-    
-    if (mode === 'login') {
-        login.classList.remove('hidden'); signup.classList.add('hidden');
-        lBtn.style.background = 'var(--primary)'; lBtn.style.color = 'white';
-        sBtn.style.background = 'transparent'; sBtn.style.color = '#888';
-    } else {
-        login.classList.add('hidden'); signup.classList.remove('hidden');
-        sBtn.style.background = 'var(--primary)'; sBtn.style.color = 'white';
-        lBtn.style.background = 'transparent'; lBtn.style.color = '#888';
+function filterAndRenderClubs() {
+    const grid = document.getElementById('clubs-grid');
+    const term = document.getElementById('searchInput').value.toLowerCase();
+
+    const filtered = allClubsData.filter(c => {
+        return (currentCategoryFilter === 'all' || c.category === currentCategoryFilter) &&
+               c.name.toLowerCase().includes(term);
+    });
+
+    grid.innerHTML = '';
+    if(filtered.length === 0) {
+        grid.innerHTML = '<p style="text-align:center">No clubs found.</p>'; return;
     }
-};
 
-const googleBtn = document.getElementById('googleLoginBtn');
-if(googleBtn) googleBtn.addEventListener('click', async () => {
-    try { await signInWithPopup(auth, provider); } 
-    catch (e) { alert(e.message); }
-});
+    filtered.forEach(c => {
+        const safeData = JSON.stringify(c).replace(/"/g, '&quot;').replace(/'/g, "\\'");
+        
+        // Edit Button only for Club Admin
+        const editBtn = c.isMyClub 
+            ? `<div onclick="event.stopPropagation(); openEditClubModal('${c.id}', ${safeData})" style="cursor:pointer; position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); padding:8px; border-radius:50%; color:white;"><i class="fas fa-pencil-alt"></i></div>`
+            : '';
+            
+        let bgStyle = c.image ? `background-image:url('${c.image}'); background-size:cover;` : `background:linear-gradient(45deg, ${c.color}, #111);`;
 
-const emailLoginBtn = document.getElementById('emailLoginBtn');
-if(emailLoginBtn) emailLoginBtn.addEventListener('click', async () => {
-    try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPass').value); }
-    catch(e) { alert(e.message); }
-});
-
-const emailSignupBtn = document.getElementById('emailSignupBtn');
-if(emailSignupBtn) emailSignupBtn.addEventListener('click', async () => {
-    try { await createUserWithEmailAndPassword(auth, document.getElementById('signupEmail').value, document.getElementById('signupPass').value); }
-    catch(e) { alert(e.message); }
-});
-
-// --- 4. IMAGE HELPER ---
-function convertImageToBase64(file) {
-    return new Promise((resolve, reject) => {
-        if (!file) return resolve(null);
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const MAX_WIDTH = 800; const MAX_HEIGHT = 600;
-                let width = img.width; let height = img.height;
-                if (width > height) {
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                } else {
-                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                }
-                canvas.width = width; canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7)); 
-            };
-        };
-        reader.onerror = (error) => reject(error);
+        const div = document.createElement('div');
+        div.className = 'club-card';
+        div.onclick = () => window.location.href = `club_details.html?id=${c.id}`;
+        div.innerHTML = `
+            ${editBtn}
+            <div class="club-banner" style="${bgStyle}"></div>
+            <div class="club-card-body">
+                <h4>${c.name}</h4>
+                <p style="font-size:0.8rem; color:#aaa">${c.description}</p>
+                <span class="badge" style="background:${c.color}">${c.category}</span>
+            </div>
+        `;
+        grid.appendChild(div);
     });
 }
 
-// --- 5. CLUB FUNCTIONS ---
-async function loadClubs(filter = 'all') {
-    const grid = document.getElementById('clubs-grid');
-    if(!grid) return;
-    try {
-        const snapshot = await getDocs(collection(db, "clubs"));
-        grid.innerHTML = '';
-        snapshot.forEach(docSnap => {
-            const d = docSnap.data();
-            const clubId = docSnap.id; 
-            if(filter !== 'all' && d.category !== filter) return;
-            
-            const safeData = JSON.stringify(d).replace(/"/g, '&quot;');
-            
-            let bannerStyle = `background: linear-gradient(45deg, ${d.color}, #111);`;
-            let logoHTML = `<div class="club-logo">🏛️</div>`;
-            
-            if (d.image && d.image.startsWith('data:image')) {
-                bannerStyle = `background-image: url('${d.image}'); background-size: cover; background-position: center;`;
-                logoHTML = ''; 
-            }
+// --- 9. CLUB DETAILS LOGIC ---
 
-            // DYNAMIC EDIT BUTTON: Only add HTML if admin
-            const editBtnHTML = isAdmin 
-                ? `<div class="edit-btn" onclick="openEditClubModal(event, '${clubId}', ${safeData})"><i class="fas fa-pencil-alt"></i></div>`
-                : '';
+async function loadClubDetails() {
+    const params = new URLSearchParams(window.location.search);
+    const clubId = params.get('id');
+    if(!clubId) return;
 
-            const el = document.createElement('div');
-            el.className = 'club-card';
-            el.onclick = () => window.location.href = `club_details.html?id=${clubId}`;
-            el.innerHTML = `
-                ${editBtnHTML}
-                <div class="club-banner" style="${bannerStyle}">${logoHTML}</div>
-                <div class="club-card-body">
-                    <h4 style="margin:0">${d.name}</h4>
-                    <p style="font-size:0.8rem; color:#aaa;">${d.description}</p>
-                    <span class="badge" style="background:${d.color}">${d.category}</span>
-                </div>`;
-            grid.appendChild(el);
-        });
-        if(grid.innerHTML === '') grid.innerHTML = '<p style="color:#666">No clubs found.</p>';
-    } catch(e) { console.error(e); }
+    window.currentClubId = clubId;
+
+    const docRef = doc(db, "clubs", clubId);
+    const snap = await getDoc(docRef);
+    
+    if(snap.exists()) {
+        const data = snap.data();
+        
+        document.getElementById('headerClubName').textContent = data.name;
+        document.getElementById('detailClubName').textContent = data.name;
+        document.getElementById('detailCategory').textContent = data.category;
+        document.getElementById('detailCategory').style.background = data.color;
+        document.getElementById('detailDesc').textContent = data.description;
+
+        // Check Permissions
+        const isAdmin = data.admins && data.admins.includes(currentUser.uid);
+        window.isCurrentClubAdmin = isAdmin;
+
+        if(isAdmin) {
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.classList.remove('admin-only');
+                el.classList.add('is-admin-visible');
+            });
+        }
+        renderCalendar();
+    }
 }
 
-window.switchClubTab = (cat) => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
-    loadClubs(cat);
+// --- 10. CALENDAR & EVENTS LOGIC ---
+
+window.renderCalendar = async () => {
+    let q = query(collection(db, "events"));
+    if(window.currentClubId) {
+        q = query(collection(db, "events"), where("clubId", "==", window.currentClubId));
+    }
+    const snap = await getDocs(q);
+    eventsData = [];
+    snap.forEach(d => eventsData.push({id: d.id, ...d.data()}));
+
+    const calDays = document.getElementById('calendarDays');
+    if(calDays) {
+        calDays.innerHTML = '';
+        const firstDay = new Date(currYear, currMonth, 1).getDay();
+        const daysInMonth = new Date(currYear, currMonth + 1, 0).getDate();
+        
+        document.getElementById('monthLabel').innerText = new Date(currYear, currMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        for(let i=0; i<firstDay; i++) calDays.innerHTML += `<div></div>`;
+        for(let i=1; i<=daysInMonth; i++) {
+            const dateKey = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            const hasEvent = eventsData.some(e => e.date === dateKey);
+            const dot = hasEvent ? '<div class="event-dot"></div>' : '';
+            calDays.innerHTML += `<div onclick="openDayModal(${i})">${i}${dot}</div>`;
+        }
+    }
 }
 
-window.openEditClubModal = (e, id, data) => {
-    e.stopPropagation(); 
+window.openDayModal = (day) => {
+    const list = document.getElementById('modalEventList');
+    list.innerHTML = '';
+    const dateKey = `${currYear}-${String(currMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    document.getElementById('modalDateTitle').innerText = dateKey;
+
+    const evts = eventsData.filter(e => e.date === dateKey);
+    if(evts.length === 0) list.innerHTML = '<p style="text-align:center;color:#666">No events.</p>';
+
+    evts.forEach(evt => {
+        const safe = JSON.stringify(evt).replace(/"/g, '&quot;');
+        const actions = window.isCurrentClubAdmin ? `
+            <div class="event-actions">
+                <i class="fas fa-pencil-alt" onclick="openEditEventModal(${safe})"></i>
+                <i class="fas fa-trash" onclick="deleteEvent('${evt.id}')"></i>
+            </div>` : '';
+            
+        list.innerHTML += `<div class="event-list-item">
+            <div><strong>${evt.title}</strong><br><small>${evt.time}</small></div>
+            ${actions}
+        </div>`;
+    });
+    document.getElementById('eventModal').classList.remove('hidden');
+}
+
+// --- 11. MODAL HANDLERS & FORMS ---
+
+// Create Club
+const createClubForm = document.getElementById('createClubForm');
+if(createClubForm) {
+    createClubForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('clubName').value;
+        const category = document.getElementById('clubCategory').value;
+        const color = document.getElementById('clubColor').value;
+        const desc = document.getElementById('clubDesc').value;
+        const fileInput = document.getElementById('clubImageFile');
+        
+        let imageUrl = "";
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                await addDoc(collection(db, "clubs"), {
+                    name, category, color, description: desc, image: e.target.result,
+                    admins: [currentUser.uid]
+                });
+                window.location.reload();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            await addDoc(collection(db, "clubs"), {
+                name, category, color, description: desc, image: "",
+                admins: [currentUser.uid]
+            });
+            window.location.reload();
+        }
+    });
+}
+
+// Edit Club
+window.openEditClubModal = (id, data) => {
     document.getElementById('editClubId').value = id;
     document.getElementById('editClubName').value = data.name;
     document.getElementById('editClubCategory').value = data.category;
     document.getElementById('editClubColor').value = data.color;
     document.getElementById('editClubDesc').value = data.description;
     document.getElementById('existingClubImage').value = data.image || "";
-    document.getElementById('editClubImageFile').value = ""; 
     document.getElementById('editClubModal').classList.remove('hidden');
-};
-
-async function handleCreateClub(e) {
-    e.preventDefault();
-    if(!isAdmin) return alert("Unauthorized: Admins Only");
-    
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.innerText = "Processing..."; submitBtn.disabled = true;
-
-    try {
-        const fileInput = document.getElementById("clubImageFile");
-        let imageString = "";
-        if (fileInput.files.length > 0) imageString = await convertImageToBase64(fileInput.files[0]);
-
-        await addDoc(collection(db, "clubs"), {
-            name: document.getElementById("clubName").value,
-            category: document.getElementById("clubCategory").value,
-            color: document.getElementById("clubColor").value,
-            description: document.getElementById("clubDesc").value,
-            image: imageString,
-            createdAt: new Date().toISOString()
-        });
-        window.closeModals();
-        loadClubs();
-        document.getElementById("createClubForm").reset();
-    } catch(e) { alert(e.message); }
-    finally { submitBtn.innerText = "Create Club"; submitBtn.disabled = false; }
 }
 
-async function handleUpdateClub(e) {
-    e.preventDefault();
-    if(!isAdmin) return alert("Unauthorized");
-    // ... (rest of logic same as before, see full logic in prev response if needed, kept concise here)
-    // Re-using logic from previous step for brevity but ensuring security check:
-    const id = document.getElementById('editClubId').value;
-    const clubRef = doc(db, "clubs", id);
-    try {
-        const fileInput = document.getElementById("editClubImageFile");
-        let imageString = document.getElementById("existingClubImage").value;
-        if (fileInput.files.length > 0) imageString = await convertImageToBase64(fileInput.files[0]);
+const editClubForm = document.getElementById('editClubForm');
+if(editClubForm) {
+    editClubForm.addEventListener('submit', async(e) => {
+        e.preventDefault();
+        const id = document.getElementById('editClubId').value;
+        const fileInput = document.getElementById('editClubImageFile');
+        let img = document.getElementById('existingClubImage').value;
 
-        await updateDoc(clubRef, {
-            name: document.getElementById("editClubName").value,
-            category: document.getElementById("editClubCategory").value,
-            color: document.getElementById("editClubColor").value,
-            description: document.getElementById("editClubDesc").value,
-            image: imageString
-        });
-        window.closeModals(); loadClubs(); 
-    } catch(e) { alert("Error: " + e.message); }
+        if (fileInput.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                await updateDoc(doc(db, "clubs", id), {
+                    name: document.getElementById('editClubName').value,
+                    category: document.getElementById('editClubCategory').value,
+                    color: document.getElementById('editClubColor').value,
+                    description: document.getElementById('editClubDesc').value,
+                    image: e.target.result
+                });
+                window.location.reload();
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            await updateDoc(doc(db, "clubs", id), {
+                name: document.getElementById('editClubName').value,
+                category: document.getElementById('editClubCategory').value,
+                color: document.getElementById('editClubColor').value,
+                description: document.getElementById('editClubDesc').value,
+            });
+            window.location.reload();
+        }
+    });
 }
 
-// --- 6. CALENDAR & EVENT LOGIC ---
-function startCalendarListener() {
-    onSnapshot(collection(db, "events"), (snap) => {
-        calendarEvents = [];
-        snap.forEach(d => calendarEvents.push({id: d.id, ...d.data()}));
+// Add Event
+const newEventForm = document.getElementById('newEventForm');
+if(newEventForm) {
+    newEventForm.addEventListener('submit', async(e) => {
+        e.preventDefault();
+        await addDoc(collection(db, "events"), {
+            title: document.getElementById('evtTitle').value,
+            date: document.getElementById('evtDate').value,
+            time: document.getElementById('evtTime').value,
+            category: document.getElementById('evtCategory').value,
+            clubId: window.currentClubId
+        });
+        closeModals();
         renderCalendar();
     });
 }
 
-function renderCalendar() {
-    const container = document.getElementById("calendarDays");
-    if(!container) return;
-    // ... Calendar rendering logic (same as previous)
-    const label = document.getElementById("monthLabel");
-    const eventsToShow = currentPageClubId ? calendarEvents.filter(e => e.clubId === currentPageClubId) : calendarEvents;
-    const y = currentDate.getFullYear(), m = currentDate.getMonth();
-    label.innerText = new Date(y, m).toLocaleString('default', { month: 'long', year: 'numeric' });
-    container.innerHTML = "";
-    const firstDay = new Date(y, m, 1).getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    for(let i=0; i<firstDay; i++) container.innerHTML += `<div></div>`;
-    for(let i=1; i<=daysInMonth; i++) {
-        const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-        const evts = eventsToShow.filter(e => e.date === dateStr);
-        const hasEvt = evts.length ? `<div class="dot"></div>` : '';
-        const isToday = new Date().toDateString() === new Date(y, m, i).toDateString() ? 'today' : '';
-        const el = document.createElement('div');
-        el.className = `day ${isToday}`;
-        el.innerHTML = `<span>${i}</span>${hasEvt}`;
-        el.onclick = () => window.openDateModal(dateStr, evts);
-        container.appendChild(el);
-    }
+// Edit Event Logic
+window.openEditEventModal = (evt) => {
+    document.getElementById('eventModal').classList.add('hidden');
+    document.getElementById('editEvtId').value = evt.id;
+    document.getElementById('editEvtTitle').value = evt.title;
+    document.getElementById('editEvtDate').value = evt.date;
+    document.getElementById('editEvtTime').value = evt.time;
+    document.getElementById('editEvtCategory').value = evt.category;
+    document.getElementById('editEventModal').classList.remove('hidden');
 }
 
-window.changeMonth = (d) => { currentDate.setMonth(currentDate.getMonth() + d); renderCalendar(); };
-window.goToToday = () => { currentDate = new Date(); renderCalendar(); };
-
-async function handleAddEvent(e) {
-    e.preventDefault();
-    if(!isAdmin) return alert("Unauthorized");
-    try {
-        await addDoc(collection(db, "events"), {
-            title: document.getElementById("evtTitle").value,
-            date: document.getElementById("evtDate").value,
-            time: document.getElementById("evtTime").value,
-            category: document.getElementById("evtCategory").value,
-            clubId: currentPageClubId || 'global',
-            clubName: currentPageClubName || 'Global' 
+const editEventForm = document.getElementById('editEventForm');
+if(editEventForm) {
+    editEventForm.addEventListener('submit', async(e) => {
+        e.preventDefault();
+        const id = document.getElementById('editEvtId').value;
+        await updateDoc(doc(db, "events", id), {
+            title: document.getElementById('editEvtTitle').value,
+            date: document.getElementById('editEvtDate').value,
+            time: document.getElementById('editEvtTime').value,
+            category: document.getElementById('editEvtCategory').value
         });
-        window.closeModals();
-    } catch(e) { alert(e.message); }
-}
-
-// --- 7. RSVP / INTEREST LOGIC ---
-window.toggleInterest = async (eventId, eventTitle, eventDate, eventTime) => {
-    if(!currentUser) return alert("Please login first");
-    const btn = document.getElementById(`btn-${eventId}`);
-    const q = query(collection(db, `users/${currentUser.uid}/interested`), where("eventId", "==", eventId));
-    const snapshot = await getDocs(q);
-    if(!snapshot.empty) {
-        snapshot.forEach(async (d) => await deleteDoc(doc(db, `users/${currentUser.uid}/interested`, d.id)));
-        btn.innerHTML = '<i class="far fa-star"></i> Interest'; btn.style.background = '#333';
-    } else {
-        await addDoc(collection(db, `users/${currentUser.uid}/interested`), { eventId, title: eventTitle, date: eventDate, time: eventTime, savedAt: new Date() });
-        btn.innerHTML = '<i class="fas fa-star"></i> Interested'; btn.style.background = '#e67e22';
-    }
-};
-
-async function checkInterestStatus(eventId) {
-    if(!currentUser) return false;
-    const q = query(collection(db, `users/${currentUser.uid}/interested`), where("eventId", "==", eventId));
-    const snapshot = await getDocs(q);
-    return !snapshot.empty;
-}
-
-async function loadMySchedule(uid) {
-    const list = document.getElementById('my-schedule-list');
-    if(!list) return;
-    onSnapshot(collection(db, `users/${uid}/interested`), (snap) => {
-        list.innerHTML = '';
-        if(snap.empty) { list.style.display = 'block'; list.innerHTML = '<p style="color:#666">No upcoming events marked.</p>'; return; }
-        list.style.display = 'grid'; 
-        let events = []; snap.forEach(doc => events.push(doc.data()));
-        events.sort((a,b) => new Date(a.date) - new Date(b.date));
-        events.forEach(e => {
-            list.innerHTML += `<div class="schedule-card">
-                <div><h4>${e.title}</h4><div class="meta"><div><i class="far fa-calendar"></i> ${e.date}</div></div></div>
-                <div style="text-align:right;"><span style="background:#333; color:#4a90e2; font-size:0.7rem; padding:4px 8px; border-radius:4px;">GOING</span></div>
-            </div>`;
-        });
+        closeModals();
+        renderCalendar();
     });
 }
 
-// --- 8. MODAL UTILS ---
-window.openDateModal = async (date, evts) => {
-    const modal = document.getElementById("eventModal");
-    const list = document.getElementById("modalEventList");
-    const dateObj = new Date(date);
-    document.getElementById("modalDateTitle").innerText = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    
-    // Admin: Show "Add Event" button inside date modal if admin
-    const addBtnHTML = isAdmin ? `<button onclick="openAddEventModal()" class="btn" style="width:100%; margin-bottom:15px;">+ Add Event Here</button>` : '';
-
-    if(evts.length > 0) {
-        list.innerHTML = addBtnHTML; // prepend button
-        for (const e of evts) {
-            const isInterested = await checkInterestStatus(e.id);
-            const btnStyle = isInterested ? 'background:#e67e22;' : 'background:#333;';
-            list.innerHTML += `
-            <div style="padding:15px 0; border-bottom:1px solid #333">
-                <div style="display:flex; justify-content:space-between;">
-                    <div><b>${e.title}</b><br><span style="font-size:0.8rem; color:#888;">${e.clubName || 'Event'}</span></div>
-                    <span style="background:#333; padding:2px 8px;">${e.time || 'All Day'}</span>
-                </div>
-                <div style="margin-top:10px;">
-                    <button id="btn-${e.id}" onclick="toggleInterest('${e.id}', '${e.title}', '${e.date}', '${e.time}')" class="btn" style="${btnStyle} padding:5px 10px; font-size:0.8rem;">Interest</button>
-                </div>
-            </div>`;
-        }
-    } else {
-        list.innerHTML = addBtnHTML + '<p style="text-align:center; padding:20px; color:#666">No events scheduled.</p>';
-    }
-    modal.classList.remove("hidden");
-};
-
-// --- 9. DETAILS & RESOURCES ---
-async function loadClubDetails(id) {
-    // ... same as before
-    const docSnap = await getDoc(doc(db, "clubs", id));
-    if(docSnap.exists()){
-        const d = docSnap.data(); currentPageClubName = d.name;
-        document.getElementById('headerClubName').innerText = d.name;
-        document.getElementById('detailClubName').innerText = d.name;
-        document.getElementById('detailDesc').innerText = d.description;
-        document.getElementById('detailCategory').innerText = d.category;
-        document.getElementById('detailCategory').style.background = d.color;
+window.deleteEvent = async (id) => {
+    if(confirm("Delete event?")) {
+        await deleteDoc(doc(db, "events", id));
+        closeModals();
+        renderCalendar();
     }
 }
 
-async function loadResources(clubId) {
-    const list = document.getElementById("resourcesList");
-    if(!list) return;
-    const snapshot = await getDocs(collection(db, "resources"));
-    list.innerHTML = '';
-    snapshot.forEach(docSnap => {
-        const r = docSnap.data();
-        if(r.clubId !== clubId) return;
-        let icon = 'fa-link'; let color = '#4a90e2';
-        if(r.type === 'pdf') { icon = 'fa-file-pdf'; color = '#e74c3c'; }
-        list.innerHTML += `
-            <div style="background:#1e1e1e; padding:15px; border-radius:8px; display:flex; align-items:center; gap:15px; border:1px solid #333;">
-                <div style="font-size:1.5rem; color:${color};"><i class="fas ${icon}"></i></div>
-                <div style="flex:1;"><h4>${r.title}</h4><span style="font-size:0.75rem; color:#888;">${r.type}</span></div>
-                <a href="${r.url}" target="_blank" class="btn" style="background:#333;">Open</a>
-            </div>`;
-    });
+// Global Helpers
+window.openCreateClubModal = () => document.getElementById('createClubModal').classList.remove('hidden');
+window.openAddAdminModal = () => document.getElementById('addAdminModal').classList.remove('hidden');
+window.openAddEventModal = () => document.getElementById('addEventModal').classList.remove('hidden');
+window.openAddResourceModal = () => document.getElementById('addResourceModal').classList.remove('hidden');
+window.closeModals = () => document.querySelectorAll('.event-modal').forEach(m => m.classList.add('hidden'));
+window.switchClubTab = (cat) => {
+    currentCategoryFilter = cat;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    filterAndRenderClubs();
 }
-
-async function handleAddResource(e, clubId) {
-    e.preventDefault();
-    if(!isAdmin) return alert("Unauthorized");
-    try {
-        await addDoc(collection(db, "resources"), {
-            clubId: clubId, title: document.getElementById("resTitle").value,
-            type: document.getElementById("resType").value, url: document.getElementById("resUrl").value,
-            createdAt: new Date().toISOString()
-        });
-        window.closeModals(); loadResources(clubId);
-    } catch(e) { alert(e.message); }
+window.goToToday = () => {
+    const d = new Date();
+    currMonth = d.getMonth();
+    currYear = d.getFullYear();
+    renderCalendar();
 }
-
-async function handleAddNewAdmin(e) {
-    e.preventDefault();
-    if(!isAdmin) return alert("Unauthorized");
-    const email = document.getElementById("newAdminEmail").value.trim();
-    if(!email) return;
-    try {
-        await setDoc(doc(db, "admins", email), { role: "admin", addedBy: currentUser.email });
-        alert(`${email} is now an Admin.`); window.closeModals();
-    } catch(e) { alert(e.message); }
+window.changeMonth = (d) => {
+    currMonth += d;
+    renderCalendar();
 }
-
-// --- 10. MODAL HELPERS ---
-window.openCreateClubModal = () => document.getElementById("createClubModal").classList.remove("hidden");
-window.openAddEventModal = () => document.getElementById("addEventModal").classList.remove("hidden");
-window.openAddResourceModal = () => document.getElementById("addResourceModal").classList.remove("hidden");
-window.openAddAdminModal = () => document.getElementById("addAdminModal").classList.remove("hidden");
-window.closeModals = () => document.querySelectorAll(".event-modal").forEach(el => el.classList.add("hidden"));
