@@ -61,7 +61,11 @@ inLoop is a centralized platform that takes information directly from the source
 * **Dynamic Content:** Clubs feature custom banners, descriptions, and resource links.
 * **Resource Hub:** Downloadable PDFs inside urls and external links specific to each club.
 
+
+
+
 ### 🛡️ Admin Privileges (Security)
+* **Secure Admin Whitelisting:** Admin privileges are not automatic. Access is strictly granted only to **pre-verified email addresses** manually authorized in the database.
 * **Role-Based Access:** Admin tools are hidden from standard users.
 * **Content Management:** Admins can:
     * Create and Edit Clubs.
@@ -109,29 +113,21 @@ If you want to run this project locally, follow these steps:
 2.  **Configure Firebase**
     * Create a project at [Firebase Console](https://console.firebase.google.com/).
     * Enable **Authentication** (Email/Google).
-    * **Important for Local Testing:** Go to **Authentication** > **Settings** > **Authorized Domains**. Ensure `localhost` and `127.0.0.1` are listed. If you are using a specific IP for Live Server, add that there too.
+    * **Important for Local Testing:** Go to **Authentication** > **Settings** > **Authorized Domains**. Ensure `localhost` and `127.0.0.1` are listed (this prevents Google Login errors).
     * Enable **Firestore Database**.
-    * Create a file named `firebase.js` in your root folder (or `core` folder) and paste your config:
-    ```javascript
-    import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js)";
-    // ... import auth and firestore
+    * Create a file named `firebase.js` in your root folder and paste your config keys.
 
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "SENDER_ID",
-        appId: "APP_ID"
-    };
+3.  **👑 Granting Admin Access (Crucial Step)**
+    * By default, all new users are **Students**.
+    * To test Admin features (Creating Clubs, Adding Events), you must manually set an admin in the database:
+        1. Go to **Firestore Database** in your Firebase Console.
+        2. Create a collection named `admins`.
+        3. Add a document where the **Document ID** is your exact email address (e.g., `judge@demo.com`).
+        4. Inside that document, add a field: `role` with value `"admin"`.
+    * Refresh the app, and you will now have access to the Admin Dashboard.
 
-    const app = initializeApp(firebaseConfig);
-    export const auth = ...
-    export const db = ...
-    ```
-
-3.  **Run the App**
-    * Since this uses ES6 Modules, you must run it on a local server (you cannot just double-click `index.html`).
+4.  **Run the App**
+    * Since this uses ES6 Modules, you must run it on a local server.
     * Using VS Code: Install the **Live Server** extension and click "Go Live".
 ---
 
@@ -147,4 +143,5 @@ If you want to run this project locally, follow these steps:
 ├── app.js              # Main Logic (Auth, UI, Database)
 ├── firebase.js         # Firebase Configuration
 └── README.md           # Documentation
+
 
